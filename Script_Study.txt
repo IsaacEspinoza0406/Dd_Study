@@ -1,0 +1,158 @@
+SET NAMES utf8mb4;
+SET FOREIGN_KEY_CHECKS=0;
+
+CREATE DATABASE IF NOT EXISTS StudyOmo CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE StudyOmo;
+
+-- Tabla de usuarios
+CREATE TABLE Usuario (
+    idUsuario INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(50) NOT NULL,
+    correo VARCHAR(100) NOT NULL UNIQUE,
+    contrasena VARCHAR(255) NOT NULL,
+    fechaRegistro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabla de grupos (clases)
+CREATE TABLE Grupo (
+    idGrupo INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL,
+    codigoUnico VARCHAR(10) NOT NULL UNIQUE,
+    fechaCreacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Relación usuario-grupo con rol dinámico
+CREATE TABLE Usuario_Grupo (
+    idUsuario INT UNSIGNED NOT NULL,
+    idGrupo INT UNSIGNED NOT NULL,
+    rol ENUM('alumno', 'docente') NOT NULL,
+    fechaUnion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (idUsuario, idGrupo),
+    FOREIGN KEY (idUsuario) REFERENCES Usuario(idUsuario) ON DELETE CASCADE,
+    FOREIGN KEY (idGrupo) REFERENCES Grupo(idGrupo) ON DELETE CASCADE
+);
+
+-- Tareas dentro del grupo
+CREATE TABLE Tarea (
+    idTarea INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    titulo VARCHAR(100) NOT NULL,
+    descripcion TEXT,
+    recursoURL VARCHAR(255),
+    fechaCreacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    fechaEntrega DATETIME NOT NULL,
+    idGrupo INT UNSIGNED NOT NULL,
+    FOREIGN KEY (idGrupo) REFERENCES Grupo(idGrupo) ON DELETE CASCADE
+);
+
+-- Evidencias de tareas
+CREATE TABLE Evidencia_Tarea (
+    idEvidencia INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    idTarea INT UNSIGNED NOT NULL,
+    idUsuario INT UNSIGNED NOT NULL,
+    archivoURL VARCHAR(255) NOT NULL,
+    fechaEnvio DATETIME DEFAULT CURRENT_TIMESTAMP,
+    estadoEntrega ENUM('entregada', 'no_entregada') NOT NULL DEFAULT 'no_entregada',
+    FOREIGN KEY (idTarea) REFERENCES Tarea(idTarea) ON DELETE CASCADE,
+    FOREIGN KEY (idUsuario) REFERENCES Usuario(idUsuario) ON DELETE CASCADE
+);
+
+-- Objetivos personales o de grupo
+CREATE TABLE Objetivo (
+    idObjetivo INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    idUsuario INT UNSIGNED NOT NULL,
+    idGrupo INT UNSIGNED,
+    nombre VARCHAR(100) NOT NULL,
+    descripcion TEXT,
+    totalPomodoros TINYINT UNSIGNED NOT NULL DEFAULT 1,
+    fechaCreacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (idUsuario) REFERENCES Usuario(idUsuario) ON DELETE CASCADE,
+    FOREIGN KEY (idGrupo) REFERENCES Grupo(idGrupo) ON DELETE CASCADE
+);
+
+-- Pomodoros Generales
+CREATE TABLE Pomodoro (
+    idPomodoro INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    fechaCreacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    duracionReal INT UNSIGNED COMMENT 'Segundos trabajados',
+    descansoReal INT UNSIGNED COMMENT 'Segundos descansados',
+    intentos TINYINT UNSIGNED DEFAULT 0 COMMENT 'Intentos realizados',
+	estado ENUM('completado', 'fallido', 'pausado') NOT NULL DEFAULT 'completado'
+);
+
+-- Relación entre pomodoros y tareas
+CREATE TABLE Pomodoro_Tarea (
+    idPomodoro INT UNSIGNED NOT NULL,
+    idTarea INT UNSIGNED NOT NULL,
+    PRIMARY KEY (idPomodoro, idTarea),
+    FOREIGN KEY (idPomodoro) REFERENCES Pomodoro(idPomodoro) ON DELETE CASCADE,
+    FOREIGN KEY (idTarea) REFERENCES Tarea(idTarea) ON DELETE CASCADE
+);
+
+-- Relación entre pomodoros y objetivos
+CREATE TABLE Pomodoro_Objetivo (
+    idPomodoro INT UNSIGNED NOT NULL,
+    idObjetivo INT UNSIGNED NOT NULL,
+    PRIMARY KEY (idPomodoro, idObjetivo),
+    FOREIGN KEY (idPomodoro) REFERENCES Pomodoro(idPomodoro) ON DELETE CASCADE,
+    FOREIGN KEY (idObjetivo) REFERENCES Objetivo(idObjetivo) ON DELETE CASCADE
+);
+
+-- Pomodoros asignados por grupo
+CREATE TABLE Pomodoro_Grupo (
+    idGrupo INT UNSIGNED NOT NULL,
+    idObjetivo INT UNSIGNED NOT NULL,
+    PRIMARY KEY (idGrupo, idObjetivo),
+    FOREIGN KEY (idGrupo) REFERENCES Grupo(idGrupo) ON DELETE CASCADE,
+    FOREIGN KEY (idObjetivo) REFERENCES Objetivo(idObjetivo) ON DELETE CASCADE
+);
+
+-- Evidencias de objetivos
+CREATE TABLE Evidencia_Objetivo (
+    idEvidencia INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    idObjetivo INT UNSIGNED NOT NULL,
+    idUsuario INT UNSIGNED NOT NULL,
+    archivoURL VARCHAR(255) NOT NULL,
+    fechaEnvio TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (idObjetivo) REFERENCES Objetivo(idObjetivo) ON DELETE CASCADE,
+    FOREIGN KEY (idUsuario) REFERENCES Usuario(idUsuario) ON DELETE CASCADE
+);
+
+-- Insignias
+CREATE TABLE Insignia (
+    idInsignia INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(50) NOT NULL UNIQUE,
+    descripcion VARCHAR(255),
+    fechaCreacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Relación usuario-insignia
+CREATE TABLE Usuario_Insignia (
+    idUsuario INT UNSIGNED NOT NULL,
+    idInsignia INT UNSIGNED NOT NULL,
+    fechaObtencion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (idUsuario, idInsignia),
+    FOREIGN KEY (idUsuario) REFERENCES Usuario(idUsuario) ON DELETE CASCADE,
+    FOREIGN KEY (idInsignia) REFERENCES Insignia(idInsignia) ON DELETE CASCADE
+);
+
+-- NUEVAS TABLAS PARA RACHA
+
+-- Registro de cada día de uso
+CREATE TABLE Actividad_Diaria (
+    idActividad INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    idUsuario INT UNSIGNED NOT NULL,
+    fechaActividad DATE NOT NULL,
+    UNIQUE (idUsuario, fechaActividad),
+    FOREIGN KEY (idUsuario) REFERENCES Usuario(idUsuario) ON DELETE CASCADE
+);
+
+-- Estado actual y máximo de la racha
+CREATE TABLE Racha_Usuario (
+    idUsuario INT UNSIGNED PRIMARY KEY,
+    rachaActual SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+    rachaMaxima SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+    fechaUltimoDia DATE,
+    FOREIGN KEY (idUsuario) REFERENCES Usuario(idUsuario) ON DELETE CASCADE
+);
+
+SET FOREIGN_KEY_CHECKS=1;
